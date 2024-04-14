@@ -11,4 +11,4 @@ cd drosophila-brain
 python3 main.py <bodyId>
 ```
 
-The `bodyId` is the ID of neuron to be healed; it can be passed through the command line. Otherwise the program will use a default value.
+The `bodyId` is the optional argument containing the ID of neuron to be healed; it can be passed through the command line. Otherwise the program will use a default, exemplary ID value.
