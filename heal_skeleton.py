@@ -57,7 +57,14 @@ def link_closest(skeleton: pd.DataFrame, index: int, min_index: int):
     skeleton.at[index, 'link'] = min_index
 
 
-def heal_skeleton(bodyId):
+def heal_skeleton(bodyId: int):
+
+    """Link all the segments with no children to their closest neighbours.
+
+    Arguments:
+        bodyId (int): ID of the neuron to be healed.
+    """
+    
     skeleton = neuprint.fetch_skeleton(body=bodyId, format='pandas')
     skeleton.to_csv('skeleton.csv')
     no_link = skeleton[skeleton['link'] == -1]
