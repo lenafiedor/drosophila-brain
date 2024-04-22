@@ -1,7 +1,7 @@
 # drosophila-brain
 
 ## About
-A simple simulation of a synaptic network of *Drosophila melanogaster* (fruit fly).
+A simple simulation of a synaptic network of *Drosophila melanogaster* (fruit fly).<br>
 Allows to:
 - fetch a skeleton of a selected neuron
 - link the segments with no child to their closest neighbours (`heal_skeleton.py`)
