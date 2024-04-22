@@ -1,4 +1,5 @@
 from heal_skeleton import heal_skeleton
+import link_synapses
 import neuprint
 import sys
 
@@ -16,4 +17,6 @@ try:
 except IndexError:
     print('No bodyId passed, calculating the default one')
 
-heal_skeleton(bodyId)
+healed_skeleton = heal_skeleton(bodyId)
+# plot_neuron(bodyId)
+link_synapses.heal_synapses(bodyId, healed_skeleton)

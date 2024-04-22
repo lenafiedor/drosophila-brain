@@ -1,21 +1,6 @@
 import neuprint
-import math
 import pandas as pd
-
-
-def get_euclidean_distance(coords_first: tuple, coords_second:tuple) -> float:
-
-    """Calculate the distance between two points in the Euclidean space.
-    
-    Args:
-        coords_selected (tuple): Euclidean coordinates of the first segment (x, y, z).
-        coords_second (tuple): Euclidean coordinates of the second segment (x, y, z).
-
-    Returns:
-        float: The Euclidean distance between the two points.
-    """
-
-    return math.sqrt((coords_first[0]-coords_second[0])**2 + (coords_first[1]-coords_second[1])**2 + (coords_first[2]-coords_second[2])**2)
+from utils import get_euclidean_distance
 
 
 def find_closest(segment: pd.Series, skeleton: pd.DataFrame) -> tuple:
@@ -44,7 +29,7 @@ def find_closest(segment: pd.Series, skeleton: pd.DataFrame) -> tuple:
     return min_index, min_distance
 
 
-def link_closest(skeleton: pd.DataFrame, index: int, min_index: int):
+def link_fragment_to_closest(skeleton: pd.DataFrame, index: int, min_index: int):
 
     """Link the segment to its closest neighbour.
 
@@ -63,14 +48,18 @@ def heal_skeleton(bodyId: int):
 
     Arguments:
         bodyId (int): ID of the neuron to be healed.
+
+    Returns:
+        pd.DataFrame: Healed skeleton of the given neuron.
     """
     
     skeleton = neuprint.fetch_skeleton(body=bodyId, format='pandas')
-    skeleton.to_csv('skeleton.csv')
+    skeleton.to_csv('../data/skeleton.csv')
     no_link = skeleton[skeleton['link'] == -1]
 
     for index, segment in no_link.iterrows():
-        min_index, _ = find_closest(segment, skeleton.drop(index))
-        link_closest(skeleton, index, min_index)
+        min_index, min_distance = find_closest(segment, skeleton)
+        link_fragment_to_closest(skeleton, index, min_index)
 
-    skeleton.to_csv('healed_skeleton.csv')
+    skeleton.to_csv('../data/healed_skeleton.csv')
+    return skeleton
