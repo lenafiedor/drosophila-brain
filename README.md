@@ -2,7 +2,7 @@
 
 ## About
 A simple simulation of a synaptic network of *Drosophila melanogaster* (fruit fly).
-Allows to
+Allows to:
 - fetch a skeleton of a selected neuron
 - link the segments with no child to their closest neighbours (`heal_skeleton.py`)
 - link the synapses of a given neuron to their closest fragments (`link_synapses.py`)
