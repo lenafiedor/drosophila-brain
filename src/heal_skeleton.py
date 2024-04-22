@@ -12,7 +12,7 @@ def find_closest(segment: pd.Series, skeleton: pd.DataFrame) -> tuple:
         skeleton (pd.DataFrame): DataFrame containing all the segments to find the neighbour from.
 
     Returns:
-        tuple: A tuple containing the index (int) and the minimum distance (float) of the closest neighbor segment.
+        tuple: A tuple containing the index (int) and the minimum distance (float) to the closest neighbor segment.
     """
 
     coords_selected = (segment['x'],  segment['y'], segment['z'])
@@ -46,7 +46,7 @@ def heal_skeleton(bodyId: int):
 
     """Link all the segments with no children to their closest neighbours.
 
-    Arguments:
+    Args:
         bodyId (int): ID of the neuron to be healed.
 
     Returns:
