@@ -52,12 +52,12 @@ def link_synapses(bodyId: int, healed_skeleton: pd.DataFrame) -> pd.DataFrame:
     """
 
     synapses = neuprint.fetch_synapses(bodyId)
-    synapses.to_csv('../data/synapses.csv')
+    synapses.to_csv(f'../data/synapses_{bodyId}.csv')
     synapses['linksTo'] = None
 
     for index, synapse in synapses.iterrows():
         min_index, min_distance = find_closest(synapse, healed_skeleton)
         link_synapse_to_closest(synapses, index, min_index)
     
-    synapses.to_csv('../data/linked_synapses.csv')
+    synapses.to_csv(f'../data/linked_synapses_{bodyId}.csv')
     return synapses

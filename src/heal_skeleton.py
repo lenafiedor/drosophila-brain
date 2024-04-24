@@ -54,12 +54,12 @@ def heal_skeleton(bodyId: int):
     """
     
     skeleton = neuprint.fetch_skeleton(body=bodyId, format='pandas')
-    skeleton.to_csv('../data/skeleton.csv')
+    skeleton.to_csv(f'../data/skeleton_{bodyId}.csv')
     no_link = skeleton[skeleton['link'] == -1]
 
     for index, segment in no_link.iterrows():
         min_index, min_distance = find_closest(segment, skeleton)
         link_fragment_to_closest(skeleton, index, min_index)
 
-    skeleton.to_csv('../data/healed_skeleton.csv')
+    skeleton.to_csv(f'../data/healed_skeleton_{bodyId}.csv')
     return skeleton

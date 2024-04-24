@@ -1,15 +1,18 @@
-import neuprint
 import math
+import pandas as pd
 
 from bokeh.plotting import figure
 from bokeh.io import export_png
 
 
-def plot_neuron(bodyId):
+def plot_neuron(filepath, bodyId):
 
-    n = neuprint.fetch_skeleton(bodyId)
+    n = pd.read_csv(filepath)
     plot = figure()
-    plot.scatter(n['x'], n['z'])
+    no_child = n[n['link'] == -1]
+    child = n[n['link'] != -1]
+    plot.scatter(child['x'], child['z'], color='lightblue')
+    plot.scatter(no_child['x'], no_child['z'], color='red')
     export_png(plot, filename=f'../images/skeleton_{bodyId}.png')
 
 
