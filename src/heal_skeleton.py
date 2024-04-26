@@ -1,5 +1,6 @@
 import neuprint
 import pandas as pd
+import os
 from utils import get_euclidean_distance
 
 
@@ -52,14 +53,17 @@ def heal_skeleton(bodyId: int):
     Returns:
         pd.DataFrame: Healed skeleton of the given neuron.
     """
+
+    current_dir = os.path.dirname(os.path.realpath(__file__))
     
     skeleton = neuprint.fetch_skeleton(body=bodyId, format='pandas')
-    skeleton.to_csv(f'../data/skeleton_{bodyId}.csv')
+    skeleton.to_csv(f'{current_dir}/../data/skeleton_{bodyId}.csv')
     no_link = skeleton[skeleton['link'] == -1]
 
     for index, segment in no_link.iterrows():
         min_index, min_distance = find_closest(segment, skeleton)
+        print(f'minimal distance: {min_distance}, linking segment no. {index} to segment no. {min_index}')
         link_fragment_to_closest(skeleton, index, min_index)
 
-    skeleton.to_csv(f'../data/healed_skeleton_{bodyId}.csv')
+    skeleton.to_csv(f'{current_dir}/../data/healed_skeleton_{bodyId}.csv')
     return skeleton
