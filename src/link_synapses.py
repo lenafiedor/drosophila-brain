@@ -60,7 +60,7 @@ def link_synapses(bodyId: int, healed_skeleton: pd.DataFrame = None) -> pd.DataF
     current_dir = os.path.dirname(os.path.realpath(__file__))
 
     if not healed_skeleton:
-        healed_skeleton = pd.read_csv(f'../data/healed_skeleton_{bodyId}.csv')
+        healed_skeleton = pd.read_csv(f'{current_dir}/../data/healed_skeleton_{bodyId}.csv')
     
     synapses = neuprint.fetch_synapses(bodyId)
     synapses.to_csv(f'{current_dir}/../data/synapses_{bodyId}.csv')
