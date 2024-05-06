@@ -7,6 +7,9 @@ Allows to:
 - link the segments with no child to their closest neighbours (`heal_skeleton.py`)
 - link the synapses of a given neuron to their closest fragments (`link_synapses.py`)
 
+## Under development
+Enhanced algorithm of linking synapses to their closest segment - to be continued (`link_synapses_upgraded.py`)
+
 ## Usage
 
 ```
