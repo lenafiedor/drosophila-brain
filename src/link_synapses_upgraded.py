@@ -1,107 +1,134 @@
-import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import os
+import neuprint
+from utils import get_euclidean_distance
 
-def line_equation_2D(point1, point2):
 
-    """
-    Calculate the equation of the line passing through two points in cartesian space.
+def find_closest_upgraded(synapse: pd.Series, healed_skeleton: pd.DataFrame, threshold: int = 100) -> tuple:
+
+    """Find the index of the two segments that are the given synapse's closest neighbors.
     
     Args:
-    - point1 (tuple): Coordinates of the first point (x1, y1)
-    - point2 (tuple): Coordinates of the second point (x2, y2)
+        synapse (pandas.core.series.Series): A Series representing a single synapse.
+        skeleton (pd.DataFrame): DataFrame containing all the segments to find the two closest ones from.
+        threshold (int): Maximum distance between synapse and segments to calculate the distance within.
+            For example, if threshold = 100, the difference between xyz coordinates of the synapse and of the segment must be at most equal to 100.
+            Otherwise, distance is not calculated.
+            WARNING: When too low, find_closest function may not link some synapses to any segment.
     
     Returns:
-    - tuple: Coefficients (a, b) of the line equation: y = ax + b
+        tuple: A tuple containing the indices of the two closest segments to the given synapse.
     """
 
-    x1, y1 = point1
-    x2, y2 = point2
+    coords = (synapse['x'], synapse['y'], synapse['z'])
+    min_index = -1
+    min_distance = float('inf')
 
-    # find a and b coefficients
-    slope = (y2 - y1) / (x2 - x1)
-    intercept = y1 - slope * x1
+    for _, row in healed_skeleton.iterrows():
+        if (abs(coords[0] - row['x']) <= threshold and abs(coords[1] - row['y']) <= threshold and abs(coords[2] - row['z']) <= threshold):
+            distance = get_euclidean_distance(coords, (row['x'], row['y'], row['z']))
+            if distance < min_distance:
 
-    return (slope, intercept)
+                min_distance = distance
+                min_index = row['rowId']
+
+                children = healed_skeleton[healed_skeleton['link'] == min_index]
+                parent = healed_skeleton[healed_skeleton['rowId'] == row['link']]
+
+                min_neighbor_index = -1
+                min_neighbor_distance = float('inf')
+
+                for _, child in children.iterrows():
+                    distance = get_euclidean_distance(coords, (child['x'], child['y'], child['z']))
+                    if distance < min_neighbor_distance:
+                        min_neighbor_distance = distance
+                        min_neighbor_index = child['rowId']
+
+                distance = get_euclidean_distance(coords, (parent['x'], parent['y'], parent['z']))
+                if distance < min_neighbor_distance:
+                    min_neighbor_distance = distance
+                    min_neighbor_index = parent['rowId']
+    
+    return int(min_index), int(min_neighbor_index)
 
 
-def cross_point_2D(equation, point):
+def find_intersection_point(S1: tuple, S2: tuple, synapse: tuple) -> tuple:
 
-    """
-    Calculate the coordinates of a cross point of a linear function and its perpendicular line passing through a given point.
+    """Find the intersection point in 3D space between a line defined by two segments and the perpendicular line passing through a given synapse.
 
     Args:
-    - equation (tuple): Coefficients (a, b) of the line equation: y = ax + b
-    - point (tuple): Coordinates of the point (px, py)
+        S1 (tuple): The coordinates of the first segment.
+        S2 (tuple): The coordinates of the second segment.
+        synpase (tuple): The coordinates of the synapse through which the perpendicular line passes.
 
     Returns:
-    - tuple: Coordinates of the cross point (x, y)
+        tuple: The coordinates of the intersection point of the two lines.
+
+    Notes:
+        If the direction vector of the line is parallel to any axis, the function
+        may produce incorrect results.
     """
 
-    a1, b1 = equation
-    px, py = point
+    # find direction vector and vector from S1 to synapse
+    V = np.asarray(S2) - np.asarray(S1)
+    D = np.asarray(synapse) - np.asarray(S1)
     
-    # find perpendicular coefficients
-    a2 = -1 / a1
-    b2 = py - a2 * px
+    # find normal vector
+    N = np.cross(V, np.array([1, 0, 0]))
 
-    x = (b2 - b1) / (a1 - a2)
-    y = (a1*b2 - b1*a2) / (a1 - a2)
-
-    return (x, y)
-
-
-def cross_point_3D(point1, point2, synapse):
-
-    """
-    Calculate the coordinates of a cross point of a linear function and its perpendicular line passing through a given point.
+    # calculate t parameter
+    t_param = np.dot(D, V) / np.dot(V, V)
     
+    # return intersection point
+    return tuple(S1 + t_param * V)
+
+
+# TODO: implement this function
+def add_segment(coords: tuple, healed_skeleton: pd.DataFrame) -> pd.DataFrame:
+
+    # new_row = pd.DataFrame([-1, *coords, 0, -1])
+    # healed_skeleton = pd.concat([healed_skeleton, new_row], ignore_index=True)
+    pass
+
+
+def link_synapses_upgraded(bodyId: int, healed_skeleton: pd.DataFrame = None) -> pd.DataFrame:
+
+    """Link all the synapses of a selected neuron to a line between their two closest segments and create a new segment there.
+
     Args:
-    - point1 (tuple): Coordinates of the first point (x1, y1, z1)
-    - point2 (tuple): Coordinates of the second point (x2, y2, z2)
-    - point (tuple): Coordinates of the synapse (px, py, pz)
-    
+        bodyId (int): ID of the neuron containing the synapses to be linked with their closest segments.
+
     Returns:
-    - tuple: Coordinates of the cross point (x, y, z)
+        pd.DataFrame: Synapses of the given neuron with additional column 'linksTo', pointing at the closest segment rowId.
     """
 
-    x1, y1, z1 = point1
-    x2, y2, z2 = point2
-    px, py, pz = synapse
+    current_dir = os.path.dirname(os.path.realpath(__file__))
 
-    line_equation1 = line_equation_2D((x1, y1), (x2, y2))
-    cross_point1 = cross_point_2D(line_equation1, (px, py))
+    if not healed_skeleton:
+        healed_skeleton = pd.read_csv(f'{current_dir}/../data/healed_skeleton_{bodyId}.csv')
+    
+    synapses = neuprint.fetch_synapses(bodyId)
+    synapses.to_csv(f'{current_dir}/../data/synapses_{bodyId}.csv')
+    synapses['linksTo'] = None
 
-    line_equation2 = line_equation_2D((x1, z1), (x2, z2))
-    cross_point2 = cross_point_2D(line_equation2, (cross_point1[0], pz))
+    for index, synapse in synapses.iterrows():
+        min_index, min_neighbor_index = find_closest_upgraded(synapse, healed_skeleton)
+        print(f'Linking synapse no. {index} to segment no. {min_index}')
+        print(f'Neighbor\'s rowId: {min_neighbor_index}')
+        
+        S1 = healed_skeleton[healed_skeleton['rowId'] == min_index]
+        S2 = healed_skeleton[healed_skeleton['rowId'] == min_neighbor_index]
 
-    line_equation3 = line_equation_2D((y1, z1), (y2, z2))
-    cross_point3 = cross_point_2D(line_equation3, (py, cross_point2[1]))
+        S1_coords = tuple(S1[['x', 'y', 'z']].iloc[0])
+        S2_coords = tuple(S2[['x', 'y', 'z']].iloc[0])
 
-    print(f'Cross point 1: {cross_point1}')
-    print(f'Cross point 2: {cross_point2}')
-    print(f'Cross point 3: {cross_point3}')
+        new_coords = find_intersection_point(S1_coords, S2_coords, (synapse['x'], synapse['y'], synapse['z']))
+        print(f'New segment at: {new_coords}')
+        add_segment(new_coords, healed_skeleton)
 
-    x, y, z = cross_point1[0], cross_point3[0], cross_point3[1]
-
-    print(f'xyz: {x, y, z}')
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    ax.plot([x1, x2], [y1, y2], [z1, z2])
-    ax.scatter(px, py, pz, color='b', s=50)
-    ax.scatter(cross_point1[0], cross_point1[1], 0, color='g', s=50)
-    ax.scatter(cross_point2[0], 0, cross_point2[1], color='g', s=50)
-    ax.scatter(0, cross_point3[0], cross_point3[1], color='g', s=50)
-    ax.scatter(x, y, z, color='r', s=50)
-
-    plt.gca().set_aspect('equal')
-    plt.show()
-
-    return (x, y, z)
-
-
-point1 = (1, 2, 3)
-point2 = (5, 10, 15)
-synapse = (3, 2, 6)
-
-cp = cross_point_3D(point1, point2, synapse)
+    # TODO: modify healed skeleton and synapses CSV files by adding new segments and links
+    # synapses.to_csv(f'{current_dir}/../data/linked_synapses_{bodyId}.csv')
+    # healed_skeleton.to_csv(f'{current_dir}/../data/linked_synapses_{bodyId}.csv')
+    
+    return synapses

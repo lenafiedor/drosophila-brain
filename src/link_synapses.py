@@ -1,12 +1,12 @@
 import neuprint
 import pandas as pd
 import os
-from heal_skeleton import get_euclidean_distance
+from utils import get_euclidean_distance
 
 
 def find_closest(synapse: pd.Series, healed_skeleton: pd.DataFrame, threshold: int = 100) -> tuple:
 
-    """Find the minimum distance and the index of the segment that is the closest neighbor to the selected segment.
+    """Find the minimum distance and the index of the segment that is the closest neighbor of the selected synapse.
     
     Args:
         synapse (pandas.core.series.Series): A Series representing a single synapse.
@@ -50,7 +50,7 @@ def link_synapses(bodyId: int, healed_skeleton: pd.DataFrame = None) -> pd.DataF
 
     """Link all the synapses of a selected neuron to their closest segments.
 
-    Arguments:
+    Args:
         bodyId (int): ID of the neuron containing the synapses to be linked with their closest segments.
 
     Returns:
