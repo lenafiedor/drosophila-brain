@@ -6,9 +6,7 @@ Allows to:
 - fetch a skeleton of a selected neuron
 - link the segments with no child to their closest neighbours (`heal_skeleton.py`)
 - link the synapses of a given neuron to their closest fragments (`link_synapses.py`)
-
-## Under development
-Enhanced algorithm of linking synapses to their closest segment - to be continued (`link_synapses_upgraded.py`)
+- link synapses to a new point, determined by the intersection of the line connecting two nearest segments and the straight line tangent to it, passing through the given synapse (`link_synapses_upgraded.py`)
 
 ## Usage
 
