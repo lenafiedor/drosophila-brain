@@ -67,8 +67,7 @@ def link_synapses(bodyId: int, healed_skeleton: pd.DataFrame = None) -> pd.DataF
     synapses['linksTo'] = None
 
     for index, synapse in synapses.iterrows():
-        min_index, min_distance = find_closest(synapse, healed_skeleton)
-        print(f'minimal distance: {min_distance}, linking synapse no. {index} to segment no. {min_index}')
+        min_index, _ = find_closest(synapse, healed_skeleton)
         link_synapse_to_closest(synapses, index, min_index)
     
     synapses.to_csv(f'{current_dir}/../data/linked_synapses_{bodyId}.csv')

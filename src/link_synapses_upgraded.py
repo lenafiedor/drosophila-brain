@@ -3,15 +3,17 @@ import pandas as pd
 import os
 import neuprint
 from utils import get_euclidean_distance
+from link_synapses import link_synapse_to_closest
 
 
-def find_closest_upgraded(synapse: pd.Series, healed_skeleton: pd.DataFrame, threshold: int = 100) -> tuple:
+def find_closest_upgraded(synapse: pd.Series, healed_skeleton: pd.DataFrame, num_segments: int, threshold: int = 100) -> tuple:
 
     """Find the index of the two segments that are the given synapse's closest neighbors.
     
     Args:
         synapse (pandas.core.series.Series): A Series representing a single synapse.
         skeleton (pd.DataFrame): DataFrame containing all the segments to find the two closest ones from.
+        num_segments (int): The number of initial segments.
         threshold (int): Maximum distance between synapse and segments to calculate the distance within.
             For example, if threshold = 100, the difference between xyz coordinates of the synapse and of the segment must be at most equal to 100.
             Otherwise, distance is not calculated.
@@ -21,36 +23,46 @@ def find_closest_upgraded(synapse: pd.Series, healed_skeleton: pd.DataFrame, thr
         tuple: A tuple containing the indices of the two closest segments to the given synapse.
     """
 
-    coords = (synapse['x'], synapse['y'], synapse['z'])
-    min_index = -1
-    min_distance = float('inf')
+    coords = (float(synapse['x']), float(synapse['y']), float(synapse['z']))
 
-    for _, row in healed_skeleton.iterrows():
+    min_parent_index = -1
+    min_parent_distance = float('inf')
+
+    for _, row in healed_skeleton[:num_segments].iterrows():
         if (abs(coords[0] - row['x']) <= threshold and abs(coords[1] - row['y']) <= threshold and abs(coords[2] - row['z']) <= threshold):
-            distance = get_euclidean_distance(coords, (row['x'], row['y'], row['z']))
-            if distance < min_distance:
 
-                min_distance = distance
-                min_index = row['rowId']
+            selected_coords = float(row['x']), float(row['y']), float(row['z'])
+            distance = get_euclidean_distance(coords, selected_coords)
+            if distance < min_parent_distance:
 
-                children = healed_skeleton[healed_skeleton['link'] == min_index]
+                min_parent_distance = distance
+                min_parent_index = row['rowId']
+
+                children = healed_skeleton[healed_skeleton['link'] == min_parent_index]
                 parent = healed_skeleton[healed_skeleton['rowId'] == row['link']]
 
-                min_neighbor_index = -1
-                min_neighbor_distance = float('inf')
+                min_child_index = -1
+                min_child_distance = float('inf')
 
-                for _, child in children.iterrows():
-                    distance = get_euclidean_distance(coords, (child['x'], child['y'], child['z']))
-                    if distance < min_neighbor_distance:
-                        min_neighbor_distance = distance
-                        min_neighbor_index = child['rowId']
+                if not children.empty:
+                    for _, child in children.iterrows():
+                        child_coords = float(child['x']), float(child['y']), float(child['z'])
+                        distance = get_euclidean_distance(coords, child_coords)
+                        if distance < min_child_distance:
+                            min_child_distance = distance
+                            min_child_index = child['rowId']                    
 
-                distance = get_euclidean_distance(coords, (parent['x'], parent['y'], parent['z']))
-                if distance < min_neighbor_distance:
-                    min_neighbor_distance = distance
-                    min_neighbor_index = parent['rowId']
+                if not parent.empty:
+                    parent_coords = float(parent['x'].iloc[0]), float(parent['y'].iloc[0]), float(parent['z'].iloc[0])
+                    distance = get_euclidean_distance(coords, parent_coords)
+                    if distance < min_child_distance:
+                        min_child_distance, min_parent_distance = min_parent_distance, distance 
+                        min_child_index, min_parent_index = min_parent_index, parent['rowId'].iloc[0]
+                
+                if parent.empty and children.empty:
+                    min_child_index, min_child_distance = min_parent_index, min_parent_distance
     
-    return int(min_index), int(min_neighbor_index)
+    return int(min_child_index), int(min_parent_index)
 
 
 def find_intersection_point(S1: tuple, S2: tuple, synapse: tuple) -> tuple:
@@ -73,9 +85,10 @@ def find_intersection_point(S1: tuple, S2: tuple, synapse: tuple) -> tuple:
     # find direction vector and vector from S1 to synapse
     V = np.asarray(S2) - np.asarray(S1)
     D = np.asarray(synapse) - np.asarray(S1)
-    
-    # find normal vector
-    N = np.cross(V, np.array([1, 0, 0]))
+
+    # if S1 and S2 are the same point, return S1 (or S2) as the intersection point
+    if np.all(V < 10e-6):
+        return tuple(S1)
 
     # calculate t parameter
     t_param = np.dot(D, V) / np.dot(V, V)
@@ -84,12 +97,64 @@ def find_intersection_point(S1: tuple, S2: tuple, synapse: tuple) -> tuple:
     return tuple(S1 + t_param * V)
 
 
-# TODO: implement this function
-def add_segment(coords: tuple, healed_skeleton: pd.DataFrame) -> pd.DataFrame:
+def calculate_radius(R1: float, R2: float, coords_first: tuple, coords_second: tuple, selected_coords: tuple) -> float:
 
-    # new_row = pd.DataFrame([-1, *coords, 0, -1])
-    # healed_skeleton = pd.concat([healed_skeleton, new_row], ignore_index=True)
-    pass
+    """Calculate the radius of a new segment.
+    Mathematically said: calculate the radius of a conical frustrum for a given height (based on triangle similarity).
+    
+    Args:
+        R1 (float): Radius of the first segment.
+        R2 (float): Radius of the second segment.
+        coords_first (tuple): Coordinates (xyz) of the first segment.
+        coords_second (tuple): Coordinates (xyz) of the second segment.
+        selected_coords (tuple): Coordinates of the intersection point of the line defined by two segments
+        and the perpendicular line passing through a given synapse.
+
+    Returns:
+        float: The radius of the new segment.
+    """
+
+    if R1 < R2:
+        R1, R2 = R2, R1
+        coords_first, coords_second = coords_second, coords_first
+    
+    if coords_first == coords_second:
+        return R1
+    
+    distance = get_euclidean_distance(coords_first, coords_second)
+    h0 = get_euclidean_distance(coords_first, selected_coords)
+
+    return R2 + (((R1 - R2) * abs(distance - h0)) / distance)
+
+
+def update_skeleton(healed_skeleton: pd.DataFrame, new_coords: tuple, row_id: int, min_child_index: int, min_parent_index: int,
+                    child_coords: tuple, parent_coords: tuple):
+    
+    """Add a new row representing a segment to the DataFrame of all segments.
+
+    Args:
+        healed_skeleton (pd.DataFrame): DataFrame containing all the segments.
+        new_coords (tuple): The coordinates of the new segment.
+        row_id (int): Row ID of the new segment.
+        min_child_index (int): Index of the nearest child segment.
+        min_parent_index (int): Index of the nearest parent segment.
+        child_coords (tuple): The coordinates of the child segment.
+        parent_coords (tuple): The coordinates of the parent segment.
+
+    Returns:
+        pd.DataFrame: Updated DataFrame with the new segment added.
+    """
+
+    radius = calculate_radius(healed_skeleton.at[min_child_index - 1, 'radius'], healed_skeleton.at[min_parent_index - 1, 'radius'],
+                              child_coords, parent_coords, new_coords)
+    
+    new_segment = pd.DataFrame({'rowId': [row_id], 'x': [round(new_coords[0], 1)], 'y': [round(new_coords[1], 1)],
+                                'z': [round(new_coords[2], 1)], 'radius': [round(radius, 4)], 'link': [min_parent_index]})
+    
+    healed_skeleton = pd.concat([healed_skeleton, new_segment], ignore_index=True)
+    healed_skeleton.at[min_child_index - 1, 'link'] = row_id
+
+    return healed_skeleton
 
 
 def link_synapses_upgraded(bodyId: int, healed_skeleton: pd.DataFrame = None) -> pd.DataFrame:
@@ -111,24 +176,27 @@ def link_synapses_upgraded(bodyId: int, healed_skeleton: pd.DataFrame = None) ->
     synapses = neuprint.fetch_synapses(bodyId)
     synapses.to_csv(f'{current_dir}/../data/synapses_{bodyId}.csv')
     synapses['linksTo'] = None
+    num_segments = healed_skeleton.shape[0] + 1
+    row_id = healed_skeleton['rowId'].iloc[-1] + 1
 
     for index, synapse in synapses.iterrows():
-        min_index, min_neighbor_index = find_closest_upgraded(synapse, healed_skeleton)
-        print(f'Linking synapse no. {index} to segment no. {min_index}')
-        print(f'Neighbor\'s rowId: {min_neighbor_index}')
+        min_child_index, min_parent_index = find_closest_upgraded(synapse, healed_skeleton, num_segments)
         
-        S1 = healed_skeleton[healed_skeleton['rowId'] == min_index]
-        S2 = healed_skeleton[healed_skeleton['rowId'] == min_neighbor_index]
+        child = healed_skeleton[healed_skeleton['rowId'] == min_child_index]
+        parent = healed_skeleton[healed_skeleton['rowId'] == min_parent_index]
 
-        S1_coords = tuple(S1[['x', 'y', 'z']].iloc[0])
-        S2_coords = tuple(S2[['x', 'y', 'z']].iloc[0])
+        child_coords = tuple(child[['x', 'y', 'z']].iloc[0])
+        parent_coords = tuple(parent[['x', 'y', 'z']].iloc[0])
+        synapse_coords = (synapse['x'], synapse['y'], synapse['z'])
 
-        new_coords = find_intersection_point(S1_coords, S2_coords, (synapse['x'], synapse['y'], synapse['z']))
-        print(f'New segment at: {new_coords}')
-        add_segment(new_coords, healed_skeleton)
+        new_coords = find_intersection_point(child_coords, parent_coords, synapse_coords)
+        healed_skeleton = update_skeleton(healed_skeleton, new_coords, row_id, min_child_index, min_parent_index, child_coords, parent_coords)
+        
+        link_synapse_to_closest(synapses, index, row_id)
+        row_id += 1
 
-    # TODO: modify healed skeleton and synapses CSV files by adding new segments and links
-    # synapses.to_csv(f'{current_dir}/../data/linked_synapses_{bodyId}.csv')
-    # healed_skeleton.to_csv(f'{current_dir}/../data/linked_synapses_{bodyId}.csv')
+    healed_skeleton = healed_skeleton.drop('Unnamed: 0', axis=1)
+    synapses.to_csv(f'{current_dir}/../data/linked_synapses_upgraded_{bodyId}.csv')
+    healed_skeleton.to_csv(f'{current_dir}/../data/healed_skeleton_upgraded_{bodyId}.csv')
     
     return synapses
