@@ -61,6 +61,10 @@ def heal_skeleton(bodyId: int):
     no_link = skeleton[skeleton['link'] == -1]
 
     for index, segment in no_link.iterrows():
+
+        if index == 0:
+            continue
+
         min_index, min_distance = find_closest(segment, skeleton)
         print(f'minimal distance: {min_distance}, linking segment no. {index} to segment no. {min_index}')
         link_fragment_to_closest(skeleton, index, min_index)
