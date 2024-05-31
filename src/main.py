@@ -16,7 +16,6 @@ neuprint.set_default_client(c)
 # a default value for bodyId of the neuron, can also be passed as a command line argument
 bodyId = 5813087532
 current_dir = os.path.dirname(os.path.realpath(__file__))
-filepath = f'{current_dir}/../data/skeleton_{bodyId}.csv'
 
 try:
     bodyId = int(sys.argv[1])
@@ -24,5 +23,5 @@ except IndexError:
     print('No bodyId passed, calculating the default one')
 
 # healed_skeleton = heal_skeleton(bodyId)
-# plot_neuron(filepath, bodyId)
+# plot_neuron(f'{current_dir}/../data/skeleton_{bodyId}.csv', bodyId)
 link_synapses_upgraded(bodyId)

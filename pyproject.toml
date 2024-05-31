@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "drosophila-brain"
+version = "0.1.0"
+description = ""
+authors = ["lenafiedor <lenafiedor@o2.pl>"]
+readme = "README.md"
+packages = [{include = "drosophila_brain"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+neuprint-python = "^0.4.26"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
