@@ -28,7 +28,7 @@ def plot_neuron(filepath, bodyId):
     plot.scatter(child['x'], child['z'], color='lightblue')
     plot.scatter(no_child['x'], no_child['z'], color='red')
     
-    export_png(plot, filename=f'{current_dir}/../images/skeleton_{bodyId}.png', webdriver=driver)
+    export_png(plot, filename=f'{current_dir}/../images/healed_skeleton_{bodyId}.png', webdriver=driver)
     driver.quit()
 
 

@@ -22,6 +22,7 @@ try:
 except IndexError:
     print('No bodyId passed, calculating the default one')
 
-# healed_skeleton = heal_skeleton(bodyId)
-# plot_neuron(f'{current_dir}/../data/skeleton_{bodyId}.csv', bodyId)
+healed_skeleton = heal_skeleton(bodyId)
+plot_neuron(f'{current_dir}/../data/healed_skeleton_{bodyId}.csv', bodyId)
+link_synapses(bodyId)
 link_synapses_upgraded(bodyId)
